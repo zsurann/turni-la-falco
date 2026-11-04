@@ -209,3 +209,22 @@ body.enter .top,body.enter main{animation:up .6s cubic-bezier(.2,.8,.2,1) both}
 @keyframes out{to{opacity:0;transform:scale(1.03)}}
 @keyframes ring{0%,100%{box-shadow:0 0 0 4px var(--red),0 0 0 8px rgba(178,51,56,.35)}50%{box-shadow:0 0 0 4px var(--red),0 0 0 16px rgba(178,51,56,.08)}}
 @media (prefers-reduced-motion:reduce){.screen *,.screen,.tip,.coach-dim,body.enter .top,body.enter main,.guiding #drop{animation-duration:.01s!important;animation-delay:0s!important;transition-duration:.01s!important}}
+
+/* ---------- Calcolo stipendio ---------- */
+.paybtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;background:var(--red);color:#fff;font:inherit;font-size:16px;font-weight:800;border-radius:14px;padding:13px 18px;cursor:pointer;box-shadow:0 6px 16px rgba(178,51,56,.28);transition:transform .15s,background .15s}
+.paybtn:active{transform:scale(.97);background:var(--red-d)}
+.paybtn .eu{display:inline-block;font-size:21px;line-height:1;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.paybtn[aria-expanded="true"]{background:var(--ink);box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.paybtn[aria-expanded="true"] .eu{transform:rotateY(360deg)}
+.pay{display:grid;grid-template-rows:0fr;transition:grid-template-rows .55s cubic-bezier(.2,.8,.2,1)}
+.pay.open{grid-template-rows:1fr}
+.pay-in{overflow:hidden;min-height:0}
+.pay-card{background:var(--ink);color:#fff;border-radius:var(--r);padding:20px;position:relative;overflow:hidden;opacity:0;transform:translateY(14px) scale(.98);transition:opacity .45s .1s,transform .55s .1s cubic-bezier(.2,.8,.2,1)}
+.pay.open .pay-card{opacity:1;transform:none}
+.pay-card::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;background:var(--red);transform:rotate(25deg);border-radius:24px}
+.pay-card>*{position:relative;z-index:1}
+.pay-eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#d9d9d9;font-weight:700;max-width:70%}
+.pay-amt{font-size:42px;font-weight:800;line-height:1.1;margin:10px 0 6px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.pay-calc{font-size:15px;color:#e8e8e8}
+.pay-note{margin-top:12px;font-size:13px;color:#cfcfcf;border-top:1px solid rgba(255,255,255,.15);padding-top:10px}
+@media (prefers-reduced-motion:reduce){.pay,.pay-card,.paybtn .eu{transition-duration:.01s!important}}
