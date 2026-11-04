@@ -296,10 +296,23 @@
     return out;
   }
 
-  // "full" è esattamente il nome cercato (es. "GENNARO C." == "GENNARO C.", ma non "GENNARO CELENTANO")
+  // "full" è il testo estratto dal PDF, "name" è il nome cercato dall'utente
   function nameMatches(full, name) {
+    var fNorm = normTok(full);
+    var wNorm = normTok(name);
+    if (!fNorm || !wNorm) return false;
+
+    // Gestione specifica per GIANNELAVIGNA (escludendo GIANNELAVIG V.)
+    if (wNorm === "GIANNELAVIGNA") {
+      if (fNorm.includes("GIANNELAVIG") && (fNorm.includes("V") || fNorm.endsWith("V"))) return false;
+      return fNorm === "GIANNELAVIGNA" || fNorm === "GIANNELAVIGN" || fNorm.startsWith("GIANNELAVIGNA");
+    }
+
     var want = nameTokens(name), toks = cellTokens(String(full));
-    if (!want.length || toks.length !== want.length) return false;
+    if (!want.length || toks.length !== want.length) {
+      if (fNorm.length >= 8 && wNorm.startsWith(fNorm)) return true;
+      return false;
+    }
     return locate(toks, want) === 0 || locate(toks, want.slice().reverse()) === 0;
   }
 
