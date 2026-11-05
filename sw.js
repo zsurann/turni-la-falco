@@ -1,7 +1,7 @@
 /* Service worker: prima la rete (così gli aggiornamenti del sito arrivano subito),
    se sei offline usa la copia salvata. */
 try { importScripts('config.js'); } catch (e) { /* senza notifiche push */ }
-const CACHE = 'turni-v2';
+const CACHE = 'turni-v3';
 const ASSETS = [
   './', 'index.html', 'style.css', 'app.js', 'parser.js', 'manifest.webmanifest',
   'logo.png', 'favicon.png', 'icon-192.png', 'icon-512.png',
