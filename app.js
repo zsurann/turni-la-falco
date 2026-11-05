@@ -1011,3 +1011,55 @@ if ('serviceWorker' in navigator) {
 }
 
 boot();
+
+/* PATCH iOS: lettura PDF più robusta (sostituisce readPdf) */
+async function readPdfBytes(file) {
+  try {
+    return await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(r.error || new Error('FileReader'));
+      r.readAsArrayBuffer(file);
+    });
+  } catch (e) { return file.arrayBuffer(); }
+}
+readPdf = async function (file) {
+  if (file.size === 0) throw fail('icloud', 'Il file è su iCloud e non è stato ancora scaricato completamente sul telefono. Aprilo prima nell\'app File per scaricarlo.');
+  let buf;
+  try { buf = await readPdfBytes(file); }
+  catch (e) { throw fail('icloud', 'Il telefono non mi ha dato il contenuto del file (succede con i PDF ancora su iCloud o aperti da altre app). Aprilo una volta nell\'app File e riprova.'); }
+  const data = new Uint8Array(buf);
+  if (!data.length) throw fail('icloud', 'Il file è su iCloud e non è stato ancora scaricato completamente sul telefono. Aprilo prima nell\'app File per scaricarlo.');
+  let head = '';
+  for (let i = 0; i < Math.min(data.length, 1024); i++) head += String.fromCharCode(data[i]);
+  if (!head.includes('%PDF-')) throw Object.assign(fail('open'), { detail: 'copia incompleta sul telefono: intestazione %PDF mancante' });
+  let pdf = null;
+  const opts = () => ({ data: data.slice(), isEvalSupported: false, disableFontFace: true });
+  try { pdf = await pdfjsLib.getDocument(opts()).promise; }
+  catch (e) {
+    if (e && e.name === 'PasswordException') throw fail('locked');
+    try { pdf = await pdfjsLib.getDocument(opts()).promise; }
+    catch (e2) { throw Object.assign(fail('open'), { detail: String((e2 && (e2.name + ': ' + e2.message)) || e2).slice(0, 110) }); }
+  }
+  const pages = [];
+  let items = 0, pageNo = 0;
+  try {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      pageNo = p;
+      const page = await pdf.getPage(p);
+      const vp = page.getViewport({ scale: 1 });
+      const tc = await page.getTextContent();
+      const its = tc.items.filter((i) => 'str' in i && i.str.trim());
+      items += its.length;
+      pages.push(its.map((i) => ({ str: i.str, x: i.transform[4], y: vp.height - i.transform[5], w: i.width })));
+      page.cleanup();
+    }
+  } catch (e) {
+    throw Object.assign(fail('open'), { detail: 'errore a pagina ' + pageNo + ': ' + String((e && e.message) || e).slice(0, 80) });
+  } finally { try { pdf.destroy(); } catch (e) {} }
+  if (!items) throw fail('scan');
+  let doc;
+  try { doc = P.parseDocument(pages); } catch (e) { throw fail('format'); }
+  doc.warn = checkDoc(doc);
+  return doc;
+};
