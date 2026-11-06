@@ -1,0 +1,27 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "turni-condivisi",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-06",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "turni-condivisi-db",
+      "database_id": "40e306c7-8581-4290-a0bb-f4ee5c8f3346"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "TURNI_ROOM",
+        "class_name": "TurniRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["TurniRoom"]
+    }
+  ]
+}
