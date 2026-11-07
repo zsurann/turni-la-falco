@@ -72,7 +72,7 @@ function decorate(s) {
   if (endAt <= startAt) endAt.setDate(endAt.getDate() + 1);
   const nextMidnight = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   let type;
-  if (/extra/i.test(s.label || '')) type = { k: 'x', label: 'Extra' };
+  if (/extra/i.test(s.label || '') || /^\s*EXTRA\b/i.test(s.zone || '')) type = { k: 'x', label: 'Extra' };
   else if (endAt > nextMidnight) type = { k: 'n', label: 'Notte' };
   else if (startAt.getHours() < 12) type = { k: 'm', label: 'Mattina' };
   else type = { k: 'p', label: 'Pomeriggio' };

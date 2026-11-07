@@ -73,7 +73,7 @@
     var words = explode(items);
     var timeWords = words.filter(function (w) { return TIME_RE.test(w.t); });
     var groups = clusterRows(timeWords, 4).filter(function (g) { return g.items.length >= 2; });
-    var cols = ctx && ctx.cols, mainY = Infinity, mainRight = Infinity;
+    var cols = ctx && ctx.cols, mainY = Infinity, mainRight = Infinity, labelWords = [];
 
     if (groups.length) {
       // riga di intestazione principale = quella con più orari; le altre sono colonne extra
@@ -81,6 +81,11 @@
         return (g.items.length > b.items.length || (g.items.length === b.items.length && g.y > b.y)) ? g : b;
       });
       mainY = main.y;
+      // numero dispari di orari nella riga principale: l'ultimo è l'orario "a capo" di una colonna extra
+      var strays = [];
+      groups.forEach(function (g) {
+        if (g.items.length % 2) { g.items = g.items.slice().sort(byX); strays.push(g.items.pop()); }
+      });
       mainRight = Math.max.apply(null, main.items.map(function (w) { return w.x1; })) + 10;
       cols = [];
       groups.forEach(function (g) {
@@ -94,6 +99,29 @@
         for (var i = 0; i + 1 < its.length; i += 2) {
           cols.push({ start: its[i].t, end: its[i + 1].t, c: (its[i].x0 + its[i + 1].x1) / 2, label: label });
         }
+      });
+      // colonna extra con l'orario spezzato su due righe ("08:00 -" a capo "17:00")
+      var singles = strays.slice();
+      groups.forEach(function (g) { /* gestito sopra */ });
+      timeWords.forEach(function (w) {
+        if (w.y <= mainY + 4 && !groups.some(function (g) { return g.items.indexOf(w) >= 0; }) && singles.indexOf(w) < 0 && strays.indexOf(w) < 0) singles.push(w);
+      });
+      singles = singles.filter(function (w) { return w.y <= mainY + 4; });
+      var used = [];
+      singles.sort(function (a, b) { return a.c - b.c; }).forEach(function (w) {
+        if (used.indexOf(w) >= 0) return;
+        var mate = null;
+        singles.forEach(function (o) {
+          if (o !== w && used.indexOf(o) < 0 && Math.abs(o.c - w.c) <= 25 && Math.abs(o.y - w.y) <= 30 && o.y !== w.y && (!mate || Math.abs(o.y - w.y) < Math.abs(mate.y - w.y))) mate = o;
+        });
+        if (!mate) return;
+        used.push(w, mate);
+        var a = w.y < mate.y ? w : mate, z = a === w ? mate : w;
+        var lw = words.filter(function (x) {
+          return !TIME_RE.test(x.t) && x.t !== '-' && x.y < a.y + 1 && x.y > a.y - 30 && x.c >= Math.min(a.x0, z.x0) - 40 && x.c <= Math.max(a.x1, z.x1) + 40 && x.x0 >= mainRight - 5;
+        }).sort(byRowThenX);
+        lw.forEach(function (x) { labelWords.push(x); });
+        cols.push({ start: a.t, end: z.t, c: (a.c + z.c) / 2, label: lw.map(function (x) { return x.t; }).join(' ') });
       });
       cols.sort(function (a, b) { return a.c - b.c; });
     }
@@ -109,6 +137,7 @@
       var m = MONTH_TOKEN.exec(w.t);
       if (m && MONTHS[m[1].toLowerCase()] !== undefined) { year = 2000 + parseInt(m[2], 10); return; }
       if (TIME_RE.test(w.t) || w.t === '-') return;
+      if (labelWords.indexOf(w) >= 0 || /^OPERATOR[EI]$/i.test(w.t)) return;
       if (w.c < leftBound || w.x1 > mainRight) return;
       titleWords.push(w);
     });
@@ -131,10 +160,59 @@
           });
           cells[best].push(w.t);
         });
-      rows.push({ date: year + '-' + pad(month + 1) + '-' + pad(day), cells: cells.map(function (c) { return c.join(' '); }) });
+      rows.push({ date: year + '-' + pad(month + 1) + '-' + pad(day), cells: cells.map(function (c) { var s = c.join(' '); return /^NO$/i.test(s) ? '' : s; }) });
     });
 
     return { cols: cols, year: year, title: title, rows: rows };
+  }
+
+  /* Formato "orario su ogni riga": data (01/11/2026) | giorno | orario (10:00 - 16:00) | nome.
+     Ogni orario diverso diventa una colonna. */
+  function parseRowTimes(pages) {
+    var DAYS = /^(LUNED[IÌ]|MARTED[IÌ]|MERCOLED[IÌ]|GIOVED[IÌ]|VENERD[IÌ]|SABATO|DOMENICA)$/i;
+    var found = [], title = '', year = 0, firstY = Infinity;
+    pages.forEach(function (items) {
+      var words = explode(items);
+      var dates = words.filter(function (w) { return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(w.t); });
+      if (!dates.length) return;
+      dates.forEach(function (d) {
+        var p = d.t.split('/'), iso = p[2] + '-' + pad(+p[1]) + '-' + pad(+p[0]);
+        year = +p[2];
+        if (d.y < firstY) firstY = d.y;
+        var rw = words.filter(function (w) { return w !== d && Math.abs(w.y - d.y) <= 5 && w.x0 > d.x1; }).sort(byX);
+        var tm = rw.filter(function (w) { return TIME_RE.test(w.t); });
+        if (tm.length < 2) return;
+        var nm = rw.filter(function (w) { return !TIME_RE.test(w.t) && w.t !== '-' && !DAYS.test(w.t) && w.x0 > tm[1].x1; })
+          .map(function (w) { return w.t; }).join(' ');
+        if (!nm || /^NO$/i.test(nm)) return;
+        var e = tm[1].t === '24:00' ? '00:00' : tm[1].t;
+        found.push({ date: iso, start: tm[0].t, end: e, name: nm });
+      });
+      var tw = words.filter(function (w) { return w.y < firstY - 3 && !MONTH_TOKEN.test(w.t) && !TIME_RE.test(w.t) && w.t !== '-'; });
+      if (tw.length && !title) title = tw.sort(byRowThenX).map(function (w) { return w.t; }).join(' ');
+    });
+    if (!found.length || !year) return null;
+    var cols = [];
+    found.forEach(function (f) { if (!cols.some(function (c) { return c.start === f.start && c.end === f.end; })) cols.push({ start: f.start, end: f.end, label: '' }); });
+    cols.sort(function (a, b) { return toMin(a.start) - toMin(b.start); });
+    var byDate = {}, rows = [];
+    pages.forEach(function (items) {
+      explode(items).forEach(function (w) {
+        var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(w.t);
+        if (!m) return;
+        var iso = m[3] + '-' + pad(+m[2]) + '-' + pad(+m[1]);
+        if (byDate[iso]) return;
+        byDate[iso] = { date: iso, cells: cols.map(function () { return ''; }) };
+        rows.push(byDate[iso]);
+      });
+    });
+    found.forEach(function (f) {
+      var i = cols.findIndex(function (c) { return c.start === f.start && c.end === f.end; });
+      var cell = byDate[f.date].cells;
+      cell[i] = cell[i] ? cell[i] + ' ' + f.name : f.name;
+    });
+    rows.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    return { title: title, cols: cols, rows: rows };
   }
 
   function parseDocument(pages) {
@@ -146,7 +224,11 @@
       cols = r.cols; title = r.title || title;
       rows = rows.concat(r.rows);
     });
-    if (!rows.length) throw new Error('Formato del PDF non riconosciuto');
+    if (!rows.length) {
+      var alt = parseRowTimes(pages);
+      if (alt) return alt;
+      throw new Error('Formato del PDF non riconosciuto');
+    }
     return {
       title: title,
       cols: cols.map(function (c) { return { start: c.start, end: c.end, label: c.label || '' }; }),
