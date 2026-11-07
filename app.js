@@ -105,25 +105,38 @@ function build(base, orig) {
 }
 function allShifts() {
   const out = [], have = new Set();
+  const mine = new Set();
   docs.forEach((d) => P.findShifts(d, name).forEach((s) => {
+    mine.add(d);
     have.add(s.date);
     const base = { ...s, src: d.id };
     base.key = [name, s.date, d.id, s.start].join('|');
     out.push(build(base, { start: s.start, end: s.end, role: roleOf(base) }));
   }));
   if (out.length) {
-    const dates = new Set();
-    let lastPlanned = '';
-    docs.forEach((d) => d.rows.forEach((r) => {
-      dates.add(r.date);
-      if (r.cells.some((c) => c) && r.date > lastPlanned) lastPlanned = r.date;
-    }));
+    // Fin dove i turni sono stabiliti, mese per mese: contano solo i PDF in cui compari tu
+    // (un altro posto di lavoro, pianificato più avanti, non deve far diventare "Riposo" i giorni ancora da stabilire).
+    const dates = new Set(), horizon = {}, horizonAll = {};
+    const lastOf = (d) => d.rows.reduce((m, r) => (r.cells.some((c) => c) && r.date > m ? r.date : m), '');
+    docs.forEach((d) => {
+      d.rows.forEach((r) => dates.add(r.date));
+      const last = lastOf(d);
+      if (!last) return;
+      const ms = new Set(d.rows.map((r) => r.date.slice(0, 7)));
+      ms.forEach((mo) => {
+        const l = last.slice(0, 7) === mo ? last : (last > mo ? mo + '-31' : '');
+        if (!l) return;
+        if (l > (horizonAll[mo] || '')) horizonAll[mo] = l;
+        if (mine.has(d)) horizon[mo] = horizon[mo] && horizon[mo] < l ? horizon[mo] : l;
+      });
+    });
+    const lastFor = (date) => { const mo = date.slice(0, 7); return horizon[mo] || horizonAll[mo] || ''; };
     const todayIso = iso(startOfToday());
     const pend = {};
     [...dates].sort().forEach((date) => {
       if (have.has(date)) return;
       const key = [name, date, 'riposo'].join('|');
-      const future = date > lastPlanned && date >= todayIso;
+      const future = date > lastFor(date) && date >= todayIso;
       if (future && !overrides[key]) { (pend[date.slice(0, 7)] = pend[date.slice(0, 7)] || []).push(date); return; }
       const base = { date, start: '00:00', end: '00:00', zone: '', src: '', label: '', note: '', extended: false, mates: [], rest: true, auto: true, key };
       out.push(build(base, { rest: true }));
