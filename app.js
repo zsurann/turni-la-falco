@@ -45,6 +45,8 @@ function classifyText(raw) {
  const r = {};
  if (/\bCAMPO\s+SUD\s+ROM\b/.test(t)) return { campo: 'Sud', ruolo: 'Sud Rom' };
  if (/\bCAFASSO\b/.test(t)) return { campo: 'Cafasso', ruolo: 'Parco Cafasso' };
+ if (/\bFOTOVOLTAIC[OA]\b/.test(t)) return { campo: 'Fotovoltaico', ruolo: 'Fotovoltaico' };
+ if (/\bBARTIMEO\b/.test(t)) return { campo: 'Bartimeo', ruolo: 'Casa Bartimeo' };
  if (/\bROND[AE]\b/.test(t)) r.ruolo = 'Ronda';
  else if (/\bTERR[AE]\s+DEL\s+SOLE\b/.test(t)) r.ruolo = 'Gabbiotto';
  const lato = /\bLATO\s+(NORD|SUD)\b/.exec(t);
@@ -54,12 +56,14 @@ function classifyText(raw) {
  if (c) r.campo = c[1] === 'NORD' ? 'Nord' : 'Sud';
  return r;
 }
+// Postazioni a sé (senza campo e ruolo da scegliere): nome mostrato nell'app
+const SINGLE = { Cafasso: 'Parco Cafasso', Fotovoltaico: 'Fotovoltaico', Bartimeo: 'Casa Bartimeo' };
 function infoOf(zone, src) {
  const a = classifyText(zone), b = classifyText(src);
  return { campo: a.campo || b.campo || '', ruolo: a.ruolo || b.ruolo || '', lato: a.lato || b.lato || '' };
 }
 function labelOf(c) {
- if (c.ruolo === 'Sud Rom' || c.ruolo === 'Parco Cafasso') return c.ruolo;
+ if (SINGLE[c.campo] || c.ruolo === 'Sud Rom') return c.ruolo;
  if (!c.ruolo) return '';
  if (c.ruolo === 'Ronda' && c.campo === 'Nord' && c.lato) return 'Ronda Lato ' + c.lato;
  return c.ruolo + (c.campo ? ' ' + c.campo : '');
@@ -199,7 +203,8 @@ function initials(n) {
  return w.length ? (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : (w[0][1] || ''))).toUpperCase() : '';
 }
 const pad2 = (n) => String(n).padStart(2, '0');
-let heroShift = null, heroTimer = 0, heroLive = false;
+let heroShift = null, heroTimer = 0, heroLive = false, heroScene = false;
+const SCENE_BEFORE = 36e5; // la scena compare già un'ora prima dell'inizio
 
 /* ---------- Scena animata della postazione (turno in corso) ----------
  Dove si trova l'operatore, in base a campo, ruolo e ora:
@@ -210,6 +215,8 @@ let heroShift = null, heroTimer = 0, heroLive = false;
  - Campo Nord, Ronda lato Sud: controllo ingressi fino alle 18:00, poi in auto
  - Campo Nord, Ronda lato Nord (o senza lato): sempre in auto
  - Parchi (Cafasso e gli altri parchi): sempre il parco
+ - Fotovoltaico: sempre l'impianto con i pannelli solari
+ - Casa Bartimeo (anche i turni extra): sempre il centro Caritas
  L'orario del cambio è riferito al giorno in cui inizia il turno: una notte che inizia alle 22 è già "dopo le 19". */
 const SCN = window.TurniScenes || {};
 function scenePlan(s) {
@@ -221,6 +228,8 @@ function scenePlan(s) {
  if (s.startAt >= t) return [{ kind: b }];
  return [{ kind: a, until: t }, { kind: b, from: t }];
  };
+ if (info.ruolo === 'Fotovoltaico') return [{ kind: 'solar' }];
+ if (info.ruolo === 'Casa Bartimeo') return [{ kind: 'caritas' }];
  if (info.ruolo === 'Parco Cafasso' || /\bPARC(O|HI)\b/.test(txt)) return [{ kind: 'park' }];
  if (info.ruolo === 'Sud Rom') return [{ kind: 'car' }];
  const ronda = info.ruolo === 'Ronda';
@@ -262,14 +271,15 @@ function updateScene() {
  }
  }
  const tag = box.querySelector('.scn-tag span');
- tag.textContent = SCN[kind].label + (st.next ? ' · dalle ' + hhmm(st.next.from) + ' ' + SCN[st.next.kind].short : '');
+ tag.textContent = (now < heroShift.startAt ? 'Alle ' + hhmm(heroShift.startAt) + ' · ' : '') + SCN[kind].label + (st.next ? ' · dalle ' + hhmm(st.next.from) + ' ' + SCN[st.next.kind].short : '');
 }
 // Conto alla rovescia del prossimo turno (o barra di avanzamento se è in corso), aggiornato ogni secondo
 function heroTick() {
  const s = heroShift, h = $('#hero');
  if (!s || h.hidden || !h.isConnected) return;
  const now = Date.now(), live = s.startAt <= now;
- if (live !== heroLive) { render(); return; } // il turno è appena iniziato: mostro "Turno in corso" e la scena
+ if (live !== heroLive) { render(); return; } // il turno è appena iniziato: mostro "Turno in corso"
+ if (!heroScene && s.startAt - now <= SCENE_BEFORE) { render(); return; } // manca un'ora: compare la scena
  const left = Math.max(0, (live ? s.endAt : s.startAt) - now);
  const lab = $('#cdLab');
  if (lab) lab.textContent = live ? 'Finisce tra' : 'Inizia tra';
@@ -296,9 +306,10 @@ function renderHero(s, now) {
  if (s.role) meta.append(el('span', 'role', s.role));
  const live = s.startAt <= now;
  heroLive = live;
- // scena della postazione, solo mentre il turno è in corso
+ // scena della postazione: da un'ora prima dell'inizio fino alla fine del turno
  let scene = '';
- const plan = live ? scenePlan(s) : [];
+ heroScene = s.startAt - now <= SCENE_BEFORE;
+ const plan = heroScene ? scenePlan(s) : [];
  if (plan.length) {
  scene = el('div', 'scn');
  scene.id = 'heroScene';
@@ -590,7 +601,7 @@ function docsFor(campo, ruolo) {
 }
 
 // Opzioni di modifica disponibili in base ai PDF caricati
-const CAMPI_ORDER = ['Sud', 'Nord', 'Cafasso'];
+const CAMPI_ORDER = ['Sud', 'Nord', 'Cafasso', 'Fotovoltaico', 'Bartimeo'];
 const RUOLI_ORDER = ['Ronda', 'Gabbiotto', 'Sud Rom'];
 function availableCampi() {
  const found = new Set(docs.map((d) => infoOf(d.title, d.id)).filter((c) => c.ruolo).map((c) => c.campo));
@@ -621,9 +632,9 @@ function renderSheet() {
  body.replaceChildren();
 
  if (wiz.step === 1) {
- body.append(el('p', 'q', 'Campo o riposo?'));
+ body.append(el('p', 'q', 'Postazione o riposo?'));
  availableCampi().forEach((c) => {
- if (c === 'Cafasso') body.append(opt('Parco Cafasso', '', () => { wiz.campo = 'Cafasso'; wiz.ruolo = 'Parco Cafasso'; wiz.step = 3; renderSheet(); }, 'big'));
+ if (SINGLE[c]) body.append(opt(SINGLE[c], '', () => { wiz.campo = c; wiz.ruolo = SINGLE[c]; wiz.step = 3; renderSheet(); }, 'big'));
  else body.append(opt('Campo ' + c, '', () => { wiz.campo = c; wiz.step = 2; renderSheet(); }, 'big'));
  });
  if (!docs.length) body.append(el('p', 'none', 'Non hai ancora caricato nessun PDF: carica i tuoi turni per poter scegliere il campo.'));
@@ -648,8 +659,8 @@ function renderSheet() {
  return;
  }
 
- const place = wiz.campo === 'Cafasso' ? 'Parco Cafasso' : 'Campo ' + wiz.campo + ' · ' + wiz.ruolo;
- body.append(backBtn(wiz.campo === 'Cafasso' ? 1 : 2), el('p', 'q', 'Con chi hai fatto il cambio? · ' + place));
+ const place = SINGLE[wiz.campo] ? SINGLE[wiz.campo] : 'Campo ' + wiz.campo + ' · ' + wiz.ruolo;
+ body.append(backBtn(SINGLE[wiz.campo] ? 1 : 2), el('p', 'q', 'Con chi hai fatto il cambio? · ' + place));
  const matched = docsFor(wiz.campo, wiz.ruolo);
  if (!matched.length) {
  body.append(el('p', 'none', 'Non hai caricato il PDF di ' + place + '. Caricalo e riprova.'));
@@ -660,7 +671,7 @@ function renderSheet() {
  const ops = P.dayOperators(d, s.date).filter((o) => !P.nameMatches(o.name, name));
  if (!ops.length) return;
  shown += ops.length;
- if (matched.length > 1) body.append(el('p', 'grp', labelOf(c)));
+ if (matched.length > 1) body.append(el('p', 'grp', labelOf(c) + (/^\s*EXTRA\b/i.test(d.title || '') ? ' · Extra' : '')));
  ops.forEach((o) => {
  const t = decorate({ ...o, src: d.id });
  const sub = t.type.label + (o.note ? ' · ' + o.note : '');
