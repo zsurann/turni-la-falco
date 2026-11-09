@@ -199,12 +199,77 @@ function initials(n) {
  return w.length ? (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : (w[0][1] || ''))).toUpperCase() : '';
 }
 const pad2 = (n) => String(n).padStart(2, '0');
-let heroShift = null, heroTimer = 0;
+let heroShift = null, heroTimer = 0, heroLive = false;
+
+/* ---------- Scena animata della postazione (turno in corso) ----------
+ Dove si trova l'operatore, in base a campo, ruolo e ora:
+ - Campo Sud, Ronda: control room fino alle 19:00, poi in auto (la mattina quindi sempre control room)
+ - Campo Sud, Gabbiotto: controllo ingressi fino alle 19:00, poi control room
+ - Sud Rom: sempre in auto
+ - Campo Nord, Gabbiotto: sempre control room
+ - Campo Nord, Ronda lato Sud: controllo ingressi fino alle 18:00, poi in auto
+ - Campo Nord, Ronda lato Nord (o senza lato): sempre in auto
+ - Parchi (Cafasso e gli altri parchi): sempre il parco
+ L'orario del cambio è riferito al giorno in cui inizia il turno: una notte che inizia alle 22 è già "dopo le 19". */
+const SCN = window.TurniScenes || {};
+function scenePlan(s) {
+ const info = infoOf(s.zone, s.src);
+ const txt = (String(s.zone || '') + ' ' + String(s.src || '')).toUpperCase().replace(/[_.]+/g, ' ');
+ const split = (a, b, h) => {
+ const t = new Date(s.day.getFullYear(), s.day.getMonth(), s.day.getDate(), h, 0);
+ if (s.endAt <= t) return [{ kind: a }];
+ if (s.startAt >= t) return [{ kind: b }];
+ return [{ kind: a, until: t }, { kind: b, from: t }];
+ };
+ if (info.ruolo === 'Parco Cafasso' || /\bPARC(O|HI)\b/.test(txt)) return [{ kind: 'park' }];
+ if (info.ruolo === 'Sud Rom') return [{ kind: 'car' }];
+ const ronda = info.ruolo === 'Ronda';
+ const gab = !ronda && (info.ruolo === 'Gabbiotto' || /\bGABBIOTTO\b/.test(txt));
+ if (info.campo === 'Sud') {
+ if (ronda) return split('control', 'car', 19);
+ if (gab) return split('gate', 'control', 19);
+ }
+ if (info.campo === 'Nord') {
+ if (gab) return [{ kind: 'control' }];
+ if (ronda) return info.lato === 'Sud' ? split('gate', 'car', 18) : [{ kind: 'car' }];
+ }
+ return [];
+}
+function sceneNow(plan, now) {
+ if (!plan.length) return null;
+ const i = plan[0].until && now >= plan[0].until ? 1 : 0;
+ return { cur: plan[i], next: plan[i + 1] || null };
+}
+const hhmm = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+// Aggiorna la scena: cambio automatico di postazione all'orario stabilito e giorno/notte in base all'ora
+function updateScene() {
+ const box = $('#heroScene');
+ if (!box || !heroShift) return;
+ const now = new Date(), st = sceneNow(box._plan, now);
+ if (!st || !SCN[st.cur.kind]) { box.hidden = true; return; }
+ box.hidden = false;
+ const hr = now.getHours();
+ box.classList.toggle('night', hr >= 19 || hr < 6);
+ const kind = st.cur.kind;
+ if (box.dataset.kind !== kind) {
+ const first = !box.dataset.kind;
+ box.dataset.kind = kind;
+ const art = box.querySelector('.scn-art');
+ art.innerHTML = SCN[kind].svg;
+ if (!first) {
+ box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
+ toast('Sono le ' + hhmm(now) + ': ora sei ' + SCN[kind].short);
+ }
+ }
+ const tag = box.querySelector('.scn-tag span');
+ tag.textContent = SCN[kind].label + (st.next ? ' · dalle ' + hhmm(st.next.from) + ' ' + SCN[st.next.kind].short : '');
+}
 // Conto alla rovescia del prossimo turno (o barra di avanzamento se è in corso), aggiornato ogni secondo
 function heroTick() {
  const s = heroShift, h = $('#hero');
  if (!s || h.hidden || !h.isConnected) return;
  const now = Date.now(), live = s.startAt <= now;
+ if (live !== heroLive) { render(); return; } // il turno è appena iniziato: mostro "Turno in corso" e la scena
  const left = Math.max(0, (live ? s.endAt : s.startAt) - now);
  const lab = $('#cdLab');
  if (lab) lab.textContent = live ? 'Finisce tra' : 'Inizia tra';
@@ -214,6 +279,7 @@ function heroTick() {
  else { set('cd1', pad2(hh), 'ore'); set('cd2', pad2(mm), 'min'); set('cd3', pad2(ss), 'sec'); }
  const bar = $('#heroProg');
  if (bar) { bar.hidden = !live; if (live) bar.firstChild.style.width = Math.min(100, (now - s.startAt) / (s.endAt - s.startAt) * 100).toFixed(1) + '%'; }
+ updateScene();
  if (left === 0) { clearInterval(heroTimer); heroTimer = 0; setTimeout(render, 1000); }
 }
 function renderHero(s, now) {
@@ -229,6 +295,18 @@ function renderHero(s, now) {
  if (s.note) meta.append(el('span', '', s.note));
  if (s.role) meta.append(el('span', 'role', s.role));
  const live = s.startAt <= now;
+ heroLive = live;
+ // scena della postazione, solo mentre il turno è in corso
+ let scene = '';
+ const plan = live ? scenePlan(s) : [];
+ if (plan.length) {
+ scene = el('div', 'scn');
+ scene.id = 'heroScene';
+ scene._plan = plan;
+ const tag = el('div', 'scn-tag');
+ tag.append(el('i'), el('span'));
+ scene.append(el('div', 'scn-art'), tag);
+ }
  const eb = el('div', 'eyebrow');
  eb.append(el('i', 'live' + (live ? ' on' : '')), document.createTextNode(live ? 'Turno in corso' : 'Prossimo turno'));
  const cdw = el('div', 'cdw');
@@ -246,7 +324,7 @@ function renderHero(s, now) {
  eb,
  el('div', 'when', relLabel(s, now)),
  el('div', 'date', fmtLong(s.day)),
- time, prog, cdw,
+ time, scene, prog, cdw,
  meta
  );
  heroTick();
