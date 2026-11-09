@@ -1,9 +1,9 @@
 /* Service worker: prima la rete (così gli aggiornamenti del sito arrivano subito),
  se sei offline usa la copia salvata. */
 try { importScripts('config.js'); } catch (e) { /* senza notifiche push */ }
-const CACHE = 'turni-v9';
+const CACHE = 'turni-v10';
 const CORE_ASSETS = [
- './', 'index.html', 'style.css', 'app.js', 'parser.js', 'manifest.webmanifest',
+ './', 'index.html', 'style.css', 'app.js', 'parser.js', 'scenes.js', 'manifest.webmanifest',
  'logo.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
  'polyfill.js', 'config.js',
 ];
