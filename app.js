@@ -45,21 +45,28 @@ function classifyText(raw) {
  const r = {};
  if (/\bCAMPO\s+SUD\s+ROM\b/.test(t)) return { campo: 'Sud', ruolo: 'Sud Rom' };
  if (/\bCAFASSO\b/.test(t)) return { campo: 'Cafasso', ruolo: 'Parco Cafasso' };
- if (/\bFOTOVOLTAIC[OA]\b/.test(t)) return { campo: 'Fotovoltaico', ruolo: 'Fotovoltaico' };
- if (/\bBARTIMEO\b/.test(t)) return { campo: 'Bartimeo', ruolo: 'Casa Bartimeo' };
  if (/\bROND[AE]\b/.test(t)) r.ruolo = 'Ronda';
- else if (/\bTERR[AE]\s+DEL\s+SOLE\b/.test(t)) r.ruolo = 'Gabbiotto';
+ else if (/\bTERR[AE]\s+DEL\s+SOLE\b/.test(t) || /\bGABBIOTT[OI]\b/.test(t)) r.ruolo = 'Gabbiotto';
  const lato = /\bLATO\s+(NORD|SUD)\b/.exec(t);
  if (lato) r.lato = lato[1] === 'NORD' ? 'Nord' : 'Sud';
  let c = /\bCAMPO\s+(NORD|SUD)\b/.exec(t);
  if (!c) c = /\b(NORD|SUD)\b/.exec(t.replace(/\bLATO\s+(NORD|SUD)\b/g, ' '));
  if (c) r.campo = c[1] === 'NORD' ? 'Nord' : 'Sud';
+ // Fotovoltaico e Casa Bartimeo sono campi a parte: solo se il PDF non è di Campo Nord/Sud
+ // (es. "CAMPO NORD RONDA LATO FOTOVOLTAICO" resta Campo Nord)
+ if (!r.campo && !r.ruolo) {
+ if (/\bFOTOVOLTAIC[OA]\b/.test(t)) return { campo: 'Fotovoltaico', ruolo: 'Fotovoltaico' };
+ if (/\bBARTIMEO\b/.test(t)) return { campo: 'Bartimeo', ruolo: 'Casa Bartimeo' };
+ }
  return r;
 }
 // Postazioni a sé (senza campo e ruolo da scegliere): nome mostrato nell'app
 const SINGLE = { Cafasso: 'Parco Cafasso', Fotovoltaico: 'Fotovoltaico', Bartimeo: 'Casa Bartimeo' };
 function infoOf(zone, src) {
- const a = classifyText(zone), b = classifyText(src);
+ let a = classifyText(zone), b = classifyText(src);
+ // titolo e nome del file in disaccordo (uno dice Campo Nord/Sud, l'altro un campo a parte): vince Campo Nord/Sud
+ if (SINGLE[a.campo] && b.campo && !SINGLE[b.campo]) a = {};
+ if (SINGLE[b.campo] && a.campo && !SINGLE[a.campo]) b = {};
  return { campo: a.campo || b.campo || '', ruolo: a.ruolo || b.ruolo || '', lato: a.lato || b.lato || '' };
 }
 function labelOf(c) {
