@@ -8,6 +8,7 @@
   <link rel="icon" href="favicon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Turni">
   <link rel="stylesheet" href="style.css">
@@ -58,9 +59,9 @@
     <section id="shiftsSection" hidden>
       <div class="bar">
         <h2>I tuoi turni</h2>
-        <div class="seg" role="tablist">
-          <button id="tabNext" class="on" role="tab">Prossimi</button>
-          <button id="tabAll" role="tab">Tutti</button>
+        <div class="seg" role="tablist" aria-label="Quali turni mostrare">
+          <button id="tabNext" class="on" role="tab" aria-selected="true" type="button">Prossimi</button>
+          <button id="tabAll" role="tab" aria-selected="false" type="button">Tutti</button>
         </div>
       </div>
       <div id="list"></div>
@@ -70,7 +71,7 @@
 
     <section class="card upload">
       <h2>Aggiungi i PDF dei turni</h2>
-      <label id="drop" class="drop" for="file">
+      <label id="drop" class="drop" for="file" tabindex="0" role="button" aria-label="Scegli un PDF dei turni">
         <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L7 9m5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
         <span><b>Scegli un PDF</b> o trascinalo qui</span>
         <input id="file" type="file" accept="application/pdf,.pdf" multiple hidden>

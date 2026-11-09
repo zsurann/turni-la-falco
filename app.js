@@ -18,7 +18,8 @@ const MOON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
 const $ = (s) => document.querySelector(s);
 const store = {
  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
- set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
+ // false se la memoria del telefono è piena: chi chiama può avvisare
+ set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
 };
 
 let docs = store.get(LS_DOCS, []);
@@ -26,6 +27,7 @@ let name = store.get(LS_NAME, '');
 let overrides = store.get(LS_OV, {});
 let view = 'next';
 let wiz = null;
+let lastRender = 0;
 
 function el(tag, cls, text) {
  const e = document.createElement(tag);
@@ -159,6 +161,7 @@ function relLabel(s, now) {
 }
 
 function render() {
+ lastRender = Date.now();
  $('#whoName').textContent = name;
  $('#nameInput').value = name;
 
@@ -634,10 +637,11 @@ const icsDate = (d) => d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0
 function remindShifts() { const now = new Date(); return allShifts().filter((s) => !s.rest && s.endAt >= now); }
 function buildIcs(list, o) {
  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+ const perDay = {};
  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//La Falco//Turni//IT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Turni La Falco'];
  list.forEach((s) => {
  const desc = [s.role, s.note, s.mates && s.mates.length ? 'Cambio: ' + s.mates.join(', ') : 'Cambio da definire'].filter(Boolean).join(' - ');
- L.push('BEGIN:VEVENT', 'UID:turno-' + s.date + '@turni-lafalco', 'DTSTAMP:' + stamp,
+ L.push('BEGIN:VEVENT', 'UID:turno-' + s.date + ((perDay[s.date] = (perDay[s.date] || 0) + 1) > 1 ? '-' + s.start.replace(':', '') : '') + '@turni-lafalco', 'DTSTAMP:' + stamp,
  'DTSTART:' + icsDate(s.startAt), 'DTEND:' + icsDate(s.endAt),
  'SUMMARY:' + icsEsc('Turno ' + s.start + '-' + s.end + (s.role ? ' · ' + s.role : '')),
  'DESCRIPTION:' + icsEsc(desc), 'TRANSP:OPAQUE');
@@ -822,10 +826,11 @@ async function handleFiles(files) {
  problems.push('"' + f.name + '" non aggiunto: ' + errReason + (e && e.code === 'open' && e.detail ? ' [' + e.detail + ']' : ''));
  }
  }
- store.set(LS_DOCS, docs);
+ const saved = store.set(LS_DOCS, docs);
  render();
  if (added) endGuide(true);
  const lines = [...problems];
+ if (!saved) lines.push('Memoria del telefono piena: i PDF sono visibili ora ma potrebbero sparire alla chiusura. Rimuovi i PDF vecchi che non ti servono più.');
  if (added && !found) lines.push('PDF letto, ma non ho trovato "' + name + '". Controlla come è scritto il tuo nome qui sotto.');
  warns.forEach((w) => lines.push('Attenzione, ' + w + '.'));
  if (lines.length) setMsg(lines.join('\n'), 'err');
@@ -837,6 +842,8 @@ const drop = $('#drop');
 ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+// da tastiera: Invio o Spazio aprono la scelta del file
+drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#file').click(); } });
 window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
@@ -854,6 +861,8 @@ function setView(v) {
  view = v;
  $('#tabNext').classList.toggle('on', v === 'next');
  $('#tabAll').classList.toggle('on', v === 'all');
+ $('#tabNext').setAttribute('aria-selected', String(v === 'next'));
+ $('#tabAll').setAttribute('aria-selected', String(v === 'all'));
  render();
 }
 $('#tabNext').addEventListener('click', () => setView('next'));
@@ -1053,6 +1062,10 @@ $('#updBtn').addEventListener('click', async () => {
  location.reload();
 });
 document.addEventListener('visibilitychange', checkUpdate);
+// Riaprendo l'app (magari il giorno dopo) "oggi", "prossimo turno" e i turni passati vanno ricalcolati
+document.addEventListener('visibilitychange', () => {
+ if (!document.hidden && document.body.classList.contains('mode-app') && !wiz && Date.now() - lastRender > 60000) render();
+});
 window.addEventListener('online', checkUpdate);
 setInterval(checkUpdate, 3 * 60 * 1000);
 setTimeout(checkUpdate, 2500);
