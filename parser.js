@@ -290,6 +290,12 @@
 
  function unique(a) { return a.filter(function (x, k) { return a.indexOf(x) === k; }); }
 
+ // Parole che nelle celle non indicano una persona (turno scoperto, assenze): non sono colleghi
+ var RESERVED = ['NO', 'RIPOSO', 'FERIE', 'MALATTIA', 'PERMESSO', 'FESTIVO', 'RECUPERO', 'LIBERO', 'ASSENTE', 'SCOPERTO', 'CHIUSO', 'ROL', 'CONGEDO', 'INFORTUNIO'];
+ function isPerson(toks) {
+ return toks.length > 0 && !(toks.length === 1 && RESERVED.indexOf(toks[0].n) !== -1);
+ }
+
  // Chi inizia nel momento in cui finisce un turno (endMin > 1440 = finisce il giorno dopo)
  function successors(doc, ri, endMin, mine) {
  var row = doc.rows[ri], target = endMin, rel = row, out = [];
@@ -300,13 +306,14 @@
  }
  if (!rel) return out;
  rel.cells.forEach(function (o, j) {
- if (!o || (rel === row && mine[j])) return;
+ if (!o || !doc.cols[j] || (rel === row && mine[j])) return;
  var toks = cellTokens(o);
  var lead = toks.length ? hourMin(toks[0].raw) : null;
  var st = lead !== null ? lead : toMin(doc.cols[j].start);
  if (st % 1440 !== target % 1440) return;
- var t = toks.filter(function (x) { return hourMin(x.raw) === null; })
- .map(function (x) { return x.raw; }).join(' ');
+ var words = toks.filter(function (x) { return hourMin(x.raw) === null; });
+ if (!isPerson(words)) return;
+ var t = words.map(function (x) { return x.raw; }).join(' ');
  if (t && out.indexOf(t) === -1) out.push(t);
  });
  return out;
@@ -362,7 +369,7 @@
  doc.rows.forEach(function (row, ri) {
  var segs = [];
  row.cells.forEach(function (cell, i) {
- if (!cell) return;
+ if (!cell || !doc.cols[i]) return;
  var toks = cellTokens(cell);
  var s = locate(toks, want);
  if (s < 0 && want.length > 1) s = locate(toks, wantRev);
@@ -383,11 +390,11 @@
  doc.rows.forEach(function (r, k) { if (r.date === date) ri = k; });
  if (ri < 0) return out;
  doc.rows[ri].cells.forEach(function (cell, i) {
- if (!cell) return;
+ if (!cell || !doc.cols[i]) return;
  var toks = cellTokens(cell), so = null, eo = null;
  if (toks.length && hourMin(toks[0].raw) !== null) { so = hourMin(toks[0].raw); toks = toks.slice(1); }
  if (toks.length && hourMin(toks[toks.length - 1].raw) !== null) { eo = hourMin(toks[toks.length - 1].raw); toks = toks.slice(0, -1); }
- if (!toks.length) return;
+ if (!isPerson(toks)) return; // cella vuota, solo orari o parola riservata (es. FERIE)
  var key = toks.map(function (t) { return t.n; }).join('');
  if (!byKey[key]) { byKey[key] = []; order.push(key); }
  byKey[key].push(mkSeg(doc, i, so, eo, toks.map(function (t) { return t.raw; }).join(' ')));

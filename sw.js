@@ -1,7 +1,7 @@
 /* Service worker: prima la rete (così gli aggiornamenti del sito arrivano subito),
  se sei offline usa la copia salvata. */
 try { importScripts('config.js'); } catch (e) { /* senza notifiche push */ }
-const CACHE = 'turni-v6';
+const CACHE = 'turni-v7';
 const CORE_ASSETS = [
  './', 'index.html', 'style.css', 'app.js', 'parser.js', 'manifest.webmanifest',
  'logo.png', 'favicon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
@@ -35,10 +35,12 @@ self.addEventListener('fetch', (e) => {
  e.respondWith(
  fetch(req)
  .then((res) => {
- if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+ // solo risposte complete (niente 206 parziali) finiscono nella copia offline
+ if (res.status === 200 && res.type === 'basic') { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {}); }
  return res;
  })
- .catch(() => caches.match(req).then((r) => r || caches.match('index.html')))
+ // offline: la copia salvata; la pagina principale solo per le navigazioni (non al posto di un'immagine o di uno script)
+ .catch(() => caches.match(req, { ignoreSearch: req.mode === 'navigate' }).then((r) => r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error())))
  );
 });
 
