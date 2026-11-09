@@ -158,6 +158,37 @@
     </div>
   </div>
 
+  <!-- Una sola volta, per chi aveva già l'app prima del nuovo design -->
+  <div id="reveal" class="screen reveal" data-step="ask" hidden>
+    <div class="deco" aria-hidden="true"><i class="glow"></i><i class="glow b"></i><i class="sq a"></i><i class="sq b"></i></div>
+    <div class="scr-top"><div class="plate"><img src="logo.png" alt="La Falco soc. coop."></div></div>
+    <div class="scr-body stage">
+      <div class="pane r-ask">
+        <h1>Bentornato,<br>sei <span class="sheen" id="rvName"></span>?</h1>
+        <p class="lead">Abbiamo preparato una novità per te.</p>
+        <div class="yn">
+          <button class="big" id="rvYes" type="button">Sì</button>
+          <button class="big alt" id="rvNo" type="button">No</button>
+        </div>
+      </div>
+      <form class="pane r-who" id="rvForm" autocomplete="off">
+        <h1>Allora<br>chi sei?</h1>
+        <p class="lead">Scrivi il tuo nome come appare sui turni, ad esempio <b>GENNARO C.</b></p>
+        <div class="field">
+          <input id="rvInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder=" ">
+          <label for="rvInput">Il tuo nome nei PDF</label>
+        </div>
+        <button class="big" type="submit">Continua</button>
+      </form>
+      <div class="pane r-gift">
+        <svg class="gift" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="26" width="44" height="30" rx="5"/><rect x="6" y="18" width="52" height="10" rx="4"/><path d="M32 18v38"/><path d="M32 18c-4-9-15-10-15-3 0 4 7 3 15 3zM32 18c4-9 15-10 15-3 0 4-7 3-15 3z"/></svg>
+        <p class="gift-msg" id="rvGift" aria-live="polite"></p>
+        <button class="big ok-btn" id="rvOk" type="button">OK!</button>
+      </div>
+    </div>
+  </div>
+  <div id="burst" class="burst" hidden aria-hidden="true"><div class="burst-in"><div class="plate"><img src="logo.png" alt=""></div></div></div>
+
   <div id="coach" class="coach" hidden>
     <div class="coach-dim"></div>
     <div class="tip" id="coachTip" role="dialog" aria-label="Guida">

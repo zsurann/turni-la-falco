@@ -7,6 +7,7 @@ const LS_DOCS = 'turni.docs.v2';
 const LS_NAME = 'turni.name.v1';
 const LS_OV = 'turni.overrides.v1';
 const LS_ONB = 'turni.onboarded.v1';
+const LS_REVEAL = 'turni.reveal.v1'; // schermata "Bentornato" del nuovo design già vista
 const LS_GUIDE = 'turni.guide.v1';
 
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -1076,6 +1077,7 @@ $('#welForm').addEventListener('submit', async (e) => {
  name = v;
  store.set(LS_NAME, name);
  store.set(LS_ONB, true);
+ store.set(LS_REVEAL, true); // chi si registra ora vede già il nuovo design
  $('#welHi').textContent = name;
  setStep(2);
  await wait(2300);
@@ -1156,10 +1158,97 @@ window.addEventListener('online', checkUpdate);
 setInterval(checkUpdate, 3 * 60 * 1000);
 setTimeout(checkUpdate, 2500);
 
+/* ---------- Bentornato: presentazione del nuovo design a chi aveva già l'app ----------
+ Nome e PDF salvati restano quelli di prima: il collega ritrova subito i suoi turni. */
+const GIFT_MSG = 'Gennaro ci tiene molto ai suoi colleghi, questo è un regalo per voi, spero vi piaccia!';
+let typeTimer = 0;
+function revealStep(step) { $('#reveal').dataset.step = step; }
+function startReveal() {
+ setMode('');
+ $('#gate').hidden = true;
+ $('#welcome').hidden = true;
+ const r = $('#reveal');
+ r.hidden = false;
+ if (name) { $('#rvName').textContent = name; revealStep('ask'); }
+ else { revealStep('who'); setTimeout(() => { try { $('#rvInput').focus({ preventScroll: true }); } catch { /* ignore */ } }, 650); }
+}
+// Il messaggio compare parola per parola, poi il pulsante OK!
+function showGift() {
+ revealStep('gift');
+ const box = $('#rvGift'), ok = $('#rvOk');
+ ok.classList.remove('show');
+ box.textContent = '';
+ clearInterval(typeTimer);
+ const words = GIFT_MSG.split(' ');
+ if (reduceMotion()) { box.textContent = GIFT_MSG; ok.classList.add('show'); return; }
+ let i = 0;
+ setTimeout(() => {
+ typeTimer = setInterval(() => {
+ const w = el('span', 'w', (i ? ' ' : '') + words[i]);
+ box.append(w);
+ if (++i >= words.length) { clearInterval(typeTimer); setTimeout(() => ok.classList.add('show'), 350); }
+ }, 110);
+ }, 700);
+}
+$('#rvYes').addEventListener('click', showGift);
+$('#rvNo').addEventListener('click', () => {
+ revealStep('who');
+ $('#rvInput').value = '';
+ setTimeout(() => { try { $('#rvInput').focus({ preventScroll: true }); } catch { /* ignore */ } }, 650);
+});
+$('#rvForm').addEventListener('submit', (e) => {
+ e.preventDefault();
+ const inp = $('#rvInput');
+ const v = inp.value.trim().toUpperCase().replace(/\s+/g, ' ');
+ if (!v) { inp.classList.remove('bad'); void inp.offsetWidth; inp.classList.add('bad'); return; }
+ inp.blur();
+ name = v;
+ store.set(LS_NAME, name);
+ showGift();
+});
+// OK!: un cerchio rosso parte dal pulsante e riempie lo schermo, poi si apre sul nuovo design con i coriandoli
+$('#rvOk').addEventListener('click', async (e) => {
+ store.set(LS_REVEAL, true);
+ store.set(LS_ONB, true);
+ const b = $('#burst'), r = e.currentTarget.getBoundingClientRect();
+ b.style.setProperty('--x', Math.round(r.left + r.width / 2) + 'px');
+ b.style.setProperty('--y', Math.round(r.top + r.height / 2) + 'px');
+ b.hidden = false;
+ b.className = 'burst grow';
+ await wait(reduceMotion() ? 50 : 1000);
+ $('#reveal').hidden = true;
+ enterMain(true);
+ window.scrollTo(0, 0);
+ b.className = 'burst grow open';
+ confetti();
+ await wait(reduceMotion() ? 50 : 900);
+ b.hidden = true;
+ b.className = 'burst';
+});
+function confetti() {
+ if (reduceMotion()) return;
+ const box = el('div', 'confetti');
+ box.setAttribute('aria-hidden', 'true');
+ const colors = ['#b23338', '#d2474d', '#ffb3b6', '#121214', '#fbbf24', '#4ade80', '#ffffff'];
+ for (let i = 0; i < 70; i++) {
+ const c = el('i');
+ c.style.setProperty('--l', (Math.random() * 100).toFixed(1) + '%');
+ c.style.setProperty('--c', colors[i % colors.length]);
+ c.style.setProperty('--d', (Math.random() * 0.6).toFixed(2) + 's');
+ c.style.setProperty('--t', (1.8 + Math.random() * 1.4).toFixed(2) + 's');
+ c.style.setProperty('--r', Math.round(Math.random() * 720 - 360) + 'deg');
+ c.style.setProperty('--dx', Math.round(Math.random() * 120 - 60) + 'px');
+ box.append(c);
+ }
+ document.body.append(box);
+ setTimeout(() => box.remove(), 3800);
+}
+
 function boot() {
  const onboarded = store.get(LS_ONB, false) || !!store.get(LS_NAME, '') || docs.length > 0;
  if (!isStandalone) { showGate(); return; }
  if (!onboarded) { startWelcome(); return; }
+ if (!store.get(LS_REVEAL, false)) { startReveal(); return; }
  enterMain(false);
 }
 
