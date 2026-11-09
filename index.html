@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#b23338">
+  <meta name="theme-color" content="#f6f4f1">
   <title>I miei turni · La Falco</title>
   <link rel="icon" href="favicon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -17,14 +17,19 @@
   <header class="top">
     <div class="wrap top-in">
       <img class="logo" src="logo.png" alt="La Falco soc. coop.">
-      <div class="who">
-        <span class="who-label">Turni di</span>
-        <strong id="whoName"></strong>
+      <div class="me">
+        <div class="who">
+          <span class="who-label">Turni di</span>
+          <strong id="whoName"></strong>
+        </div>
+        <div class="av" id="whoAv" aria-hidden="true"></div>
       </div>
     </div>
   </header>
 
   <main class="wrap">
+    <div class="greet"><small id="hello">Ciao</small><h1>Ecco i tuoi turni</h1></div>
+
     <section id="hero" class="hero" hidden></section>
 
     <section id="stats" class="statsbox" hidden>
@@ -36,10 +41,16 @@
         </div>
       </div>
       <div id="statsGrid" class="stats"></div>
-      <button id="payBtn" class="paybtn" type="button" aria-expanded="false" aria-controls="pay">
-        <span class="eu" aria-hidden="true">€</span>
-        <span id="payBtnTxt">Calcola</span>
-      </button>
+      <div class="actions">
+        <button id="payBtn" class="act pay" type="button" aria-expanded="false" aria-controls="pay">
+          <span class="ic eu" aria-hidden="true">€</span>
+          <span class="act-t"><b>Stipendio</b><span id="payBtnTxt">Calcola</span></span>
+        </button>
+        <button id="remBtn" class="act rem" type="button">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg></span>
+          <span class="act-t"><b>Promemoria</b><span id="remBtnTxt">Avvisi turni</span></span>
+        </button>
+      </div>
       <div id="pay" class="pay" aria-live="polite">
         <div class="pay-in">
           <div class="pay-card">
@@ -50,16 +61,13 @@
           </div>
         </div>
       </div>
-          <button id="remBtn" class="rembtn" type="button">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg>
-        <span>Promemoria turni</span>
-      </button>
     </section>
 
     <section id="shiftsSection" hidden>
       <div class="bar">
         <h2>I tuoi turni</h2>
-        <div class="seg" role="tablist" aria-label="Quali turni mostrare">
+        <div class="seg" id="seg" role="tablist" aria-label="Quali turni mostrare">
+          <i class="seg-pill" aria-hidden="true"></i>
           <button id="tabNext" class="on" role="tab" aria-selected="true" type="button">Prossimi</button>
           <button id="tabAll" role="tab" aria-selected="false" type="button">Tutti</button>
         </div>
@@ -113,9 +121,10 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <div id="gate" class="screen gate" hidden>
+    <div class="deco" aria-hidden="true"><i class="glow"></i><i class="glow b"></i><i class="sq a"></i><i class="sq b"></i></div>
     <div class="scr-top"><div class="plate"><img src="logo.png" alt="La Falco soc. coop."></div></div>
     <div class="scr-body">
-      <h1 class="rise" style="--d:.15s">Benvenuti in<br>Turni La Falco</h1>
+      <h1 class="rise" style="--d:.15s">Benvenuti in<br><span class="sheen">Turni La Falco</span></h1>
       <p class="lead rise" style="--d:.3s" id="gateLead">I tuoi turni sempre con te. Per iniziare, scarica l'app sul tuo telefono.</p>
       <div id="gateSteps" class="gsteps" hidden></div>
       <button id="gateBtn" class="big rise" style="--d:.45s" type="button">Scarica l'app</button>
@@ -124,16 +133,20 @@
   </div>
 
   <div id="welcome" class="screen welcome" data-step="0" hidden>
+    <div class="deco" aria-hidden="true"><i class="glow"></i><i class="glow b"></i><i class="sq a"></i><i class="sq b"></i></div>
     <div class="scr-top"><div class="plate"><img src="logo.png" alt="La Falco soc. coop."></div></div>
     <div class="scr-body stage">
       <div class="pane p0">
-        <h1>Benvenuti in<br>Turni La Falco</h1>
+        <h1>Benvenuti in<br><span class="sheen">Turni La Falco</span></h1>
         <p class="lead">Prepariamo la tua app in un attimo.</p>
       </div>
       <form class="pane p1" id="welForm" autocomplete="off">
         <h1 class="sm">Come ti chiami<br>nei PDF?</h1>
         <p class="lead">Scrivilo come appare sui turni, ad esempio <b>GENNARO C.</b></p>
-        <input id="welName" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="COGNOME N." aria-label="Il tuo nome nei PDF">
+        <div class="field">
+          <input id="welName" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder=" ">
+          <label for="welName">Il tuo nome nei PDF</label>
+        </div>
         <button class="big" type="submit">Continua</button>
       </form>
       <div class="pane p2">
@@ -141,8 +154,40 @@
         <h1 class="sm">Tutto pronto,<br><span id="welHi"></span></h1>
         <p class="lead">Nome salvato. Ora aggiungiamo i tuoi turni.</p>
       </div>
+      <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
     </div>
   </div>
+
+  <!-- Una sola volta, per chi aveva già l'app prima del nuovo design -->
+  <div id="reveal" class="screen reveal" data-step="ask" hidden>
+    <div class="deco" aria-hidden="true"><i class="glow"></i><i class="glow b"></i><i class="sq a"></i><i class="sq b"></i></div>
+    <div class="scr-top"><div class="plate"><img src="logo.png" alt="La Falco soc. coop."></div></div>
+    <div class="scr-body stage">
+      <div class="pane r-ask">
+        <h1>Bentornato,<br>sei <span class="sheen" id="rvName"></span>?</h1>
+        <p class="lead">Abbiamo preparato una novità per te.</p>
+        <div class="yn">
+          <button class="big" id="rvYes" type="button">Sì</button>
+          <button class="big alt" id="rvNo" type="button">No</button>
+        </div>
+      </div>
+      <form class="pane r-who" id="rvForm" autocomplete="off">
+        <h1>Allora<br>chi sei?</h1>
+        <p class="lead">Scrivi il tuo nome come appare sui turni, ad esempio <b>GENNARO C.</b></p>
+        <div class="field">
+          <input id="rvInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder=" ">
+          <label for="rvInput">Il tuo nome nei PDF</label>
+        </div>
+        <button class="big" type="submit">Continua</button>
+      </form>
+      <div class="pane r-gift">
+        <svg class="gift" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="26" width="44" height="30" rx="5"/><rect x="6" y="18" width="52" height="10" rx="4"/><path d="M32 18v38"/><path d="M32 18c-4-9-15-10-15-3 0 4 7 3 15 3zM32 18c4-9 15-10 15-3 0 4-7 3-15 3z"/></svg>
+        <p class="gift-msg" id="rvGift" aria-live="polite"></p>
+        <button class="big ok-btn" id="rvOk" type="button">OK!</button>
+      </div>
+    </div>
+  </div>
+  <div id="burst" class="burst" hidden aria-hidden="true"><div class="burst-in"><div class="plate"><img src="logo.png" alt=""></div></div></div>
 
   <div id="coach" class="coach" hidden>
     <div class="coach-dim"></div>
