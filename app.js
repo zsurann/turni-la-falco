@@ -163,7 +163,11 @@ function relLabel(s, now) {
 function render() {
  lastRender = Date.now();
  $('#whoName').textContent = name;
+ $('#whoAv').textContent = initials(name);
+ const hr = new Date().getHours();
+ $('#hello').textContent = (hr < 5 ? 'Buonanotte' : hr < 13 ? 'Buongiorno' : hr < 18 ? 'Buon pomeriggio' : 'Buonasera') + (name ? ', ' + name : '');
  $('#nameInput').value = name;
+ $('#remBtnTxt').textContent = pushOn ? 'Notifiche attive' : 'Avvisi turni';
 
  const now = new Date();
  const shifts = allShifts();
@@ -188,9 +192,33 @@ function render() {
  $('#shiftsSection').hidden = !shifts.length;
 }
 
+// Iniziali per l'avatar: "GENNARO C." -> "GC"
+function initials(n) {
+ const w = String(n || '').replace(/[^A-Za-zÀ-ÿ\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+ return w.length ? (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : (w[0][1] || ''))).toUpperCase() : '';
+}
+const pad2 = (n) => String(n).padStart(2, '0');
+let heroShift = null, heroTimer = 0;
+// Conto alla rovescia del prossimo turno (o barra di avanzamento se è in corso), aggiornato ogni secondo
+function heroTick() {
+ const s = heroShift, h = $('#hero');
+ if (!s || h.hidden || !h.isConnected) return;
+ const now = Date.now(), live = s.startAt <= now;
+ const left = Math.max(0, (live ? s.endAt : s.startAt) - now);
+ const lab = $('#cdLab');
+ if (lab) lab.textContent = live ? 'Finisce tra' : 'Inizia tra';
+ const d = Math.floor(left / 864e5), hh = Math.floor(left % 864e5 / 36e5), mm = Math.floor(left % 36e5 / 6e4), ss = Math.floor(left % 6e4 / 1e3);
+ const set = (id, v, l) => { const b = $('#' + id); if (b) { b.firstChild.textContent = v; b.lastChild.textContent = l; } };
+ if (d > 0) { set('cd1', d, d === 1 ? 'giorno' : 'giorni'); set('cd2', pad2(hh), 'ore'); set('cd3', pad2(mm), 'min'); }
+ else { set('cd1', pad2(hh), 'ore'); set('cd2', pad2(mm), 'min'); set('cd3', pad2(ss), 'sec'); }
+ const bar = $('#heroProg');
+ if (bar) { bar.hidden = !live; if (live) bar.firstChild.style.width = Math.min(100, (now - s.startAt) / (s.endAt - s.startAt) * 100).toFixed(1) + '%'; }
+ if (left === 0) { clearInterval(heroTimer); heroTimer = 0; setTimeout(render, 1000); }
+}
 function renderHero(s, now) {
  const h = $('#hero');
- if (!s) { h.hidden = true; return; }
+ heroShift = s || null;
+ if (!s) { h.hidden = true; clearInterval(heroTimer); heroTimer = 0; return; }
  h.hidden = false;
  const meta = el('div', 'meta');
  meta.append(el('span', 'chip ' + s.type.k, s.type.label));
@@ -199,18 +227,46 @@ function renderHero(s, now) {
  meta.append(el('span', '', fmtH(s.hours)));
  if (s.note) meta.append(el('span', '', s.note));
  if (s.role) meta.append(el('span', 'role', s.role));
+ const live = s.startAt <= now;
+ const eb = el('div', 'eyebrow');
+ eb.append(el('i', 'live' + (live ? ' on' : '')), document.createTextNode(live ? 'Turno in corso' : 'Prossimo turno'));
+ const cdw = el('div', 'cdw');
+ const cd = el('div', 'cd');
+ ['cd1', 'cd2', 'cd3'].forEach((id) => { const b = el('div'); b.id = id; b.append(el('b', '', '00'), el('span', '', '')); cd.append(b); });
+ cdw.append(el('div', 'cd-lab', ''), cd);
+ cdw.firstChild.id = 'cdLab';
+ const prog = el('div', 'hprog');
+ prog.id = 'heroProg';
+ prog.append(el('i'));
+ const time = el('div', 'time');
+ time.append(el('b', '', s.start + ' – ' + s.end));
  h.replaceChildren(
- el('div', 'eyebrow', 'Prossimo turno'),
+ el('i', 'blob'), el('i', 'blob b'), el('i', 'shine'),
+ eb,
  el('div', 'when', relLabel(s, now)),
  el('div', 'date', fmtLong(s.day)),
- el('div', 'time', s.start + ' – ' + s.end),
+ time, prog, cdw,
  meta
  );
+ heroTick();
+ if (!heroTimer) heroTimer = setInterval(heroTick, 1000);
 }
 
 const monthKey = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 const fmtNum = (h) => { const r = Math.round(h * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ','); };
-let statsKey = null;
+let statsKey = null, statsSig = '';
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Numero che conta da 0 al valore
+function countUp(node, to, fmt) {
+ if (reduceMotion() || !to) { node.textContent = fmt(to); return; }
+ const t0 = performance.now() + 150, dur = 1000;
+ const f = (t) => {
+ const k = Math.max(0, Math.min(1, (t - t0) / dur)), e = 1 - Math.pow(1 - k, 4);
+ node.textContent = k < 1 ? fmt(Math.round(to * e)) : fmt(to);
+ if (k < 1 && node.isConnected) requestAnimationFrame(f);
+ };
+ requestAnimationFrame(f);
+}
 let statsKeys = [];
 function renderStats(shifts) {
  const box = $('#stats');
@@ -230,8 +286,26 @@ function renderStats(shifts) {
  const mine = shifts.filter((s) => !s.rest && monthKey(s.day) === statsKey);
  const hours = mine.reduce((a, s) => a + s.hours, 0);
  const nights = mine.filter((s) => s.night).length;
- const mk = (v, l) => { const d = el('div', 'stat'); d.append(el('b', '', String(v)), el('span', '', l)); return d; };
- $('#statsGrid').replaceChildren(mk(mine.length, 'Turni'), mk(fmtNum(hours), 'Ore'), mk(nights, 'Notti'));
+ // barretta: quanto del mese è già stato fatto
+ const now = new Date(), done = mine.filter((s) => s.endAt <= now);
+ const doneH = done.reduce((a, s) => a + s.hours, 0), doneN = done.filter((s) => s.night).length;
+ const pct = (a, b) => (b ? Math.round(a / b * 100) : 0);
+ const sig = statsKey + '|' + mine.length + '|' + hours + '|' + nights;
+ const animate = sig !== statsSig;
+ statsSig = sig;
+ const mk = (v, l, p, fmt, tip) => {
+ const d = el('div', 'stat'), b = el('b', '', fmt(animate ? 0 : v)), bar = el('div', 'sbar'), i = el('i');
+ d.title = tip;
+ bar.append(i);
+ d.append(b, el('span', '', l), bar);
+ if (animate) { countUp(b, v, fmt); setTimeout(() => { i.style.width = p + '%'; }, 120); } else i.style.width = p + '%';
+ return d;
+ };
+ const int = (v) => String(Math.round(v));
+ $('#statsGrid').replaceChildren(
+ mk(mine.length, 'Turni', pct(done.length, mine.length), int, done.length + ' di ' + mine.length + ' già fatti'),
+ mk(hours, 'Ore', pct(doneH, hours), fmtNum, fmtNum(doneH) + ' di ' + fmtNum(hours) + ' ore già fatte'),
+ mk(nights, 'Notti', pct(doneN, nights), int, doneN + ' di ' + nights + ' notti già fatte'));
  updatePay(hours, y, m);
 }
 
@@ -314,7 +388,7 @@ function renderList(shifts, now) {
  return;
  }
  const isToday = carry ? s === cur : s.day.getTime() === today;
- const card = el('div', 'shift' + (isToday ? ' today' : '') + (s.endAt < now ? ' past' : '') + (s.rest ? ' rest' : ''));
+ const card = el('div', 'shift' + (isToday ? ' today' : '') + (s.endAt < now ? ' past' : '') + (s.rest ? ' rest' : ' k-' + s.type.k));
  card.style.animationDelay = (Math.min(idx, 10) * 0.04) + 's';
 
  const dbox = el('div', 'dbox');
@@ -354,6 +428,14 @@ function renderList(shifts, now) {
 
  body.append(main, sub);
  card.append(dbox, body);
+ if (!s.rest && s.startAt <= now && s.endAt >= now) {
+ // turno in corso: barra di avanzamento
+ const pr = el('div', 'prog'), pi = el('i');
+ pr.append(pi);
+ card.append(pr);
+ const p = Math.min(100, (now - s.startAt) / (s.endAt - s.startAt) * 100);
+ requestAnimationFrame(() => setTimeout(() => { pi.style.width = p.toFixed(1) + '%'; }, 250));
+ }
  list.append(card);
  });
 }
@@ -543,9 +625,12 @@ function renderMates() {
  body.append(el('p', 'grp', title));
  arr.forEach((m) => {
  const row = el('div', 'mate');
+ row.style.setProperty('--i', String(Math.min(body.querySelectorAll('.mate').length, 10)));
  const l = el('span', 'opt-l');
  l.append(el('b', '', m.name), el('span', '', m.role));
- row.append(l, el('span', 'opt-r', m.time));
+ const av = el('span', 'av sm ' + (/ronda/i.test(m.role) ? 'c2' : /rom|cafasso/i.test(m.role) ? 'c3' : 'c1'), initials(m.name));
+ av.setAttribute('aria-hidden', 'true');
+ row.append(av, l, el('span', 'opt-r', m.time));
  body.append(row);
  });
  };
@@ -861,6 +946,7 @@ function setView(v) {
  view = v;
  $('#tabNext').classList.toggle('on', v === 'next');
  $('#tabAll').classList.toggle('on', v === 'all');
+ $('#seg').classList.toggle('all', v === 'all');
  $('#tabNext').setAttribute('aria-selected', String(v === 'next'));
  $('#tabAll').setAttribute('aria-selected', String(v === 'all'));
  render();
