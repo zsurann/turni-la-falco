@@ -142,11 +142,94 @@
     '<circle cx="11" cy="84" r="5" fill="#f1c7a2"/><path d="M5.5 83 h11 v-2 c0 -4 -11 -4 -11 0z" fill="#1f2a4a"/></g>' +
     '</svg>';
 
+  /* ---------- Fotovoltaico: impianto con pannelli solari ---------- */
+  // Un pannello inclinato con le celle; x = bordo sinistro
+  function panel(x) {
+    return '<g><path d="M' + (x + 10) + ' 92 v-10 M' + (x + 60) + ' 92 v-14" stroke="#6b6f7d" stroke-width="2.4"/>' +
+      '<path d="M' + x + ' 84 L' + (x + 14) + ' 64 L' + (x + 80) + ' 64 L' + (x + 66) + ' 84 Z" fill="#1f3b7a" stroke="#c9d3e6" stroke-width="1.4"/>' +
+      '<g stroke="#5b7fc7" stroke-width=".7" opacity=".9"><path d="M' + (x + 4.7) + ' 77.3 H' + (x + 70.7) + ' M' + (x + 9.3) + ' 70.7 H' + (x + 75.3) + '"/>' +
+      '<path d="M' + (x + 22) + ' 84 L' + (x + 36) + ' 64 M' + (x + 44) + ' 84 L' + (x + 58) + ' 64"/></g></g>';
+  }
+  var SOLAR = '<svg viewBox="0 0 320 130" role="img" aria-label="Impianto fotovoltaico sorvegliato">' +
+    sky('sc-s', ['#9fd8ff', '#eaf6ff'], ['#0b1026', '#26244a']) +
+    '<defs><linearGradient id="sc-sgl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' +
+    '<clipPath id="sc-sclip"><path d="M18 84 L32 64 L98 64 L84 84 Z M118 84 L132 64 L198 64 L184 84 Z M218 84 L232 64 L298 64 L284 84 Z"/></clipPath>' +
+    '<linearGradient id="sc-scone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6c8" stop-opacity=".45"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></linearGradient>' +
+    '<linearGradient id="sc-sfl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6c8" stop-opacity=".7"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></linearGradient></defs>' +
+    '<g class="cloud" fill="#fff" opacity=".9"><ellipse cx="90" cy="22" rx="16" ry="6"/><ellipse cx="102" cy="18" rx="10" ry="6"/><ellipse cx="400" cy="30" rx="14" ry="5"/></g>' +
+    '<path d="M0 74 Q60 62 130 70 T260 66 T320 70 V96 H0 Z" fill="#3f5f3a" opacity=".8"/>' +
+    '<rect y="88" width="320" height="42" fill="#55773f"/>' +
+    // recinzione
+    '<g stroke="#8a8f9c" stroke-width="1"><path d="M0 70h320M0 76h320"/><path d="M6 66v24M36 66v24M66 66v24M96 66v24M126 66v24M156 66v24M186 66v24M216 66v24M246 66v24M276 66v24M306 66v24"/></g>' +
+    // pannelli e riflesso del sole che scorre sopra
+    panel(18) + panel(118) + panel(218) +
+    '<g clip-path="url(#sc-sclip)"><rect class="glint" x="-60" y="60" width="50" height="30" fill="url(#sc-sgl)" transform="skewX(-30)"/></g>' +
+    // cavo con l'energia che va all'inverter
+    '<path d="M30 98 H292" stroke="#2b2b33" stroke-width="2.2"/>' +
+    '<g class="volt" fill="#ffd34d"><circle cx="30" cy="98" r="1.8"/><circle cx="96" cy="98" r="1.8"/><circle cx="162" cy="98" r="1.8"/><circle cx="228" cy="98" r="1.8"/></g>' +
+    '<rect x="290" y="80" width="24" height="24" rx="3" fill="#e9ebf0" stroke="#9aa0ae"/>' +
+    '<text x="302" y="89" text-anchor="middle" ' + FONT + ' font-size="6" font-weight="900" fill="#c98a00">⚡</text>' +
+    '<g class="meter" fill="#4ade80"><rect x="294" y="92" width="3" height="8"/><rect x="299" y="92" width="3" height="8"/><rect x="304" y="92" width="3" height="8"/></g>' +
+    '<circle class="led" cx="310" cy="85" r="1.4" fill="#4ade80"/>' +
+    // telecamera di sorveglianza su palo
+    '<rect x="8" y="34" width="3" height="58" fill="#6b6f7d"/>' +
+    '<g class="camsweep"><path class="beam" d="M18 40 L70 30 L70 56 Z" fill="url(#sc-scone)"/><rect x="9" y="36" width="12" height="6" rx="1.5" fill="#e9ebf0"/><circle cx="20" cy="39" r="1.6" fill="#1d2440"/><circle class="rec" cx="11.5" cy="37.5" r="1" fill="#ff3b3b"/></g>' +
+    // vialetto e guardia che controlla
+    '<rect y="112" width="320" height="18" fill="#bfae8a"/>' +
+    '<g class="walker"><g class="beam"><path class="flk" d="M20 106 L80 96 L80 122 Z" fill="url(#sc-sfl)"/></g><ellipse cx="10" cy="126" rx="9" ry="2" fill="#000" opacity=".3"/>' +
+    '<g class="legA"><rect x="7" y="110" width="3.5" height="15" rx="1.5" fill="#121214"/></g><g class="legB"><rect x="11" y="110" width="3.5" height="15" rx="1.5" fill="#1d1d24"/></g>' +
+    '<path d="M4 112 C4 102 6 96 11 96 C16 96 18 102 18 112 Z" fill="#1f2a4a"/><path d="M4 104 h14 v3 h-14z" fill="#b23338"/>' +
+    '<path d="M15 101 L21 103" stroke="#1f2a4a" stroke-width="3" stroke-linecap="round"/><rect x="19.5" y="101" width="4" height="2.4" rx="1" fill="#555"/>' +
+    '<circle cx="11" cy="90" r="5" fill="#f1c7a2"/><path d="M5.5 89 h11 v-2 c0 -4 -11 -4 -11 0z" fill="#1f2a4a"/></g>' +
+    '</svg>';
+
+  /* ---------- Casa Bartimeo: centro di accoglienza Caritas ---------- */
+  var CARITAS = '<svg viewBox="0 0 320 130" role="img" aria-label="Operatore all\'ingresso di Casa Bartimeo che accoglie le persone">' +
+    sky('sc-c', ['#ffe1c4', '#fff6ec'], ['#0b1026', '#2a2448'], 288) +
+    '<defs><linearGradient id="sc-cwin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9b0"/><stop offset="1" stop-color="#ffcf6e"/></linearGradient></defs>' +
+    '<g class="cloud" fill="#fff" opacity=".85"><ellipse cx="236" cy="22" rx="14" ry="5"/><ellipse cx="246" cy="19" rx="8" ry="5"/></g>' +
+    // strada e marciapiede
+    '<rect y="100" width="320" height="30" fill="#2b2b33"/><rect y="98" width="320" height="8" fill="#c9bba6"/>' +
+    // edificio
+    '<rect x="34" y="34" width="170" height="66" fill="#f3e6d6"/><rect x="28" y="28" width="182" height="8" rx="2" fill="#8f2429"/>' +
+    '<rect x="60" y="38" width="118" height="13" rx="2.5" fill="#121214"/>' +
+    '<text x="125" y="47.6" text-anchor="middle" ' + FONT + ' font-size="7.2" font-weight="900" fill="#fff" letter-spacing="1">CASA BARTIMEO</text>' +
+    '<path class="heartbeat" d="M70 42.6 c0-2 2.6-2.6 3.4-.6 c.8-2 3.4-1.4 3.4.6 c0 2-3.4 4.2-3.4 4.2 s-3.4-2.2-3.4-4.2z" fill="#ff5a63" style="transform-origin:73.4px 44px"/>' +
+    // finestre accese
+    '<g fill="url(#sc-cwin)"><rect x="44" y="58" width="22" height="16" rx="2"/><rect x="74" y="58" width="22" height="16" rx="2"/><rect x="146" y="58" width="22" height="16" rx="2"/><rect x="176" y="58" width="22" height="16" rx="2"/></g>' +
+    '<g class="glowlamp" fill="#ffd27a" opacity=".25"><rect x="40" y="54" width="30" height="24" rx="6"/><rect x="70" y="54" width="30" height="24" rx="6"/><rect x="142" y="54" width="30" height="24" rx="6"/><rect x="172" y="54" width="30" height="24" rx="6"/></g>' +
+    '<g stroke="#e3d3bf" stroke-width="1.2"><path d="M55 58v16M85 58v16M157 58v16M187 58v16M44 66h22M74 66h22M146 66h22M176 66h22"/></g>' +
+    // persone alle finestre (volontari)
+    '<g class="winpeople" fill="#7a5a48"><circle cx="81" cy="66" r="2.4"/><rect x="78.5" y="68" width="5" height="6" rx="2"/><circle cx="183" cy="66" r="2.4"/><rect x="180.5" y="68" width="5" height="6" rx="2"/></g>' +
+    // porta d'ingresso con tettoia
+    '<rect x="102" y="56" width="34" height="5" rx="1.5" fill="#8f2429"/>' +
+    '<rect x="106" y="61" width="26" height="39" fill="#ffd27a"/>' +
+    '<g class="door"><rect x="106" y="61" width="26" height="39" fill="#7a4e2d"/><circle cx="127" cy="81" r="1.3" fill="#e8c56a"/></g>' +
+    // cuori che salgono
+    '<g fill="#ff5a63"><path class="heartup" d="M118 52 c0-2 2.6-2.6 3.4-.6 c.8-2 3.4-1.4 3.4.6 c0 2-3.4 4.2-3.4 4.2 s-3.4-2.2-3.4-4.2z"/>' +
+    '<path class="heartup h2" d="M112 54 c0-1.6 2-2 2.7-.5 c.6-1.5 2.7-1.1 2.7.5 c0 1.6-2.7 3.4-2.7 3.4 s-2.7-1.8-2.7-3.4z"/>' +
+    '<path class="heartup h3" d="M126 54 c0-1.6 2-2 2.7-.5 c.6-1.5 2.7-1.1 2.7.5 c0 1.6-2.7 3.4-2.7 3.4 s-2.7-1.8-2.7-3.4z"/></g>' +
+    // vaso con pianta e lampione
+    '<g><path d="M90 100 l2-8 h10 l2 8z" fill="#b5652e"/><circle cx="97" cy="88" r="5" fill="#3c7449"/><circle cx="93" cy="90" r="3.5" fill="#2e7a43"/></g>' +
+    '<rect x="226" y="48" width="2.5" height="52" fill="#6b6b80"/><circle class="glowlamp" cx="227" cy="49" r="12" fill="#ffe7a3" opacity=".35"/><circle cx="227" cy="48" r="3" fill="#ffe7a3"/>' +
+    // operatore all'ingresso che saluta
+    '<g><path d="M140 100 C140 88 143 82 149 82 C155 82 158 88 158 100 Z" fill="#1f2a4a"/><path d="M140 92 h18 v3 h-18z" fill="#b23338"/>' +
+    '<circle cx="149" cy="76" r="5.5" fill="#f1c7a2"/><path d="M143 74.5 h12 v-2 c0 -4.5 -12 -4.5 -12 0z" fill="#1f2a4a"/><circle cx="151" cy="77" r=".8" fill="#222"/>' +
+    '<g class="wave"><path d="M157 86 L163 78" stroke="#1f2a4a" stroke-width="3.4" stroke-linecap="round"/><circle cx="163.6" cy="77" r="2" fill="#f1c7a2"/></g></g>' +
+    // persona che arriva con la borsa ed entra
+    '<g class="guest"><ellipse cx="0" cy="104" rx="8" ry="1.8" fill="#000" opacity=".25"/>' +
+    '<g class="legA"><rect x="-3" y="90" width="3" height="13" rx="1.4" fill="#3b3b48"/></g><g class="legB"><rect x="1" y="90" width="3" height="13" rx="1.4" fill="#2b2b36"/></g>' +
+    '<path d="M-6 92 C-6 82 -4 77 0 77 C4 77 6 82 6 92 Z" fill="#c96a2a"/><circle cx="0" cy="72" r="4.6" fill="#e2b48e"/><path d="M-4.6 71 c0 -5 9.2 -5 9.2 0 c-2 -1.6 -7.2 -1.6 -9.2 0z" fill="#4a3426"/>' +
+    '<rect x="-11" y="86" width="6" height="7" rx="1.2" fill="#f3e6d6" stroke="#b9a68c" stroke-width=".6"/><path d="M-9.6 86 q1.6 -3 3.2 0" stroke="#b9a68c" stroke-width=".8" fill="none"/></g>' +
+    '</svg>';
+
   var SCENES = {
     car: { svg: CAR, label: 'In ronda con l\'auto', short: 'in auto' },
     gate: { svg: GATE, label: 'Controllo ingressi', short: 'al controllo ingressi' },
     control: { svg: CONTROL, label: 'Control room · sala telecamere', short: 'in control room' },
     park: { svg: PARK, label: 'Sorveglianza del parco', short: 'al parco' },
+    solar: { svg: SOLAR, label: 'Impianto fotovoltaico · sorveglianza', short: 'all\'impianto fotovoltaico' },
+    caritas: { svg: CARITAS, label: 'Casa Bartimeo · accoglienza Caritas', short: 'a Casa Bartimeo' },
   };
 
   root.TurniScenes = SCENES;
