@@ -125,7 +125,10 @@ main>:nth-child(2){animation-delay:.07s} main>:nth-child(3){animation-delay:.14s
 .shift.k-p{background:linear-gradient(90deg,var(--red) 0 3px,var(--card) 3px)}
 .shift.k-n{background:linear-gradient(90deg,var(--night) 0 3px,var(--card) 3px)}
 .shift.k-x{background:linear-gradient(90deg,#5a66b8 0 3px,var(--card) 3px)}
-.shift.today{box-shadow:0 0 0 2px var(--red-t),var(--sh-2)}
+.shift.today{border:1.5px solid var(--red);padding:10.5px 10.5px 10.5px 12.5px;box-shadow:0 8px 22px rgba(178,51,56,.14)}
+.shift.today:not(.rest)::before{left:-17.5px}
+.shift.today:not(.rest)::after{left:-13.5px}
+.shift.today>div:last-child::before{content:"OGGI";position:absolute;top:-9px;right:14px;background:linear-gradient(135deg,var(--red-2),var(--red-d));color:#fff;font-size:10px;font-weight:800;line-height:1.45;letter-spacing:.12em;padding:3px 9px;border-radius:999px;box-shadow:0 4px 10px rgba(178,51,56,.35)}
 .shift.tap{cursor:pointer}
 .shift.tap:active{transform:scale(.97)}
 @media (hover:hover){.shift.tap:hover{box-shadow:var(--sh-2);transform:translateY(-1px)}}
@@ -138,8 +141,6 @@ main>:nth-child(2){animation-delay:.07s} main>:nth-child(3){animation-delay:.14s
 .dbox{text-align:center;background:var(--bg);border-radius:14px;padding:6px 0}
 .dbox b{display:block;font-size:22px;line-height:1.05;font-weight:800}
 .dbox span{font-size:10px;letter-spacing:.08em;font-weight:800;text-transform:uppercase;color:var(--mut)}
-.today .dbox{background:linear-gradient(160deg,var(--red-2),var(--red-d));color:#fff;box-shadow:0 6px 14px rgba(178,51,56,.3)}
-.today .dbox span{color:rgba(255,255,255,.88)}
 .s-main{display:flex;justify-content:space-between;align-items:baseline;gap:4px 8px;flex-wrap:wrap}
 .s-day{font-weight:700;font-size:15px}
 .s-time{font-size:17px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
@@ -165,8 +166,8 @@ main>:nth-child(2){animation-delay:.07s} main>:nth-child(3){animation-delay:.14s
 .was{font-style:italic}
 
 .shift.rest{background:transparent;box-shadow:none;border:1.5px dashed #d9d4cf;padding:10px 12px 10px 13px}
-.shift.rest .dbox{background:#fff;color:var(--ink);box-shadow:none}
-.shift.rest.today .dbox span{color:var(--mut)}
+.shift.rest .dbox{background:#fff}
+.shift.rest.today{border:1.5px solid var(--red);padding:10px 12px 10px 13px}
 .rest .s-time{color:var(--mut)}
 .shift.pending{background:transparent;box-shadow:none;border:1.5px dashed #d9d4cf;animation:fade .5s both}
 .shift.pending .dbox{background:#fff;color:var(--mut)}
