@@ -361,20 +361,45 @@
  return out;
  }
 
+ // Stessa persona scritta in modi diversi nei PDF: ogni riga elenca i nomi che valgono come uno solo.
+ // Per aggiungerne un'altra: ['ROSSI', 'ROSSI M.']
+ var ALIASES = [
+ ['BARCA', 'BARCA F.']
+ ];
+ // Tutti i modi in cui può essere scritto "name" (lui compreso), come elenchi di parole
+ function nameVariants(name) {
+ var want = nameTokens(name), key = want.join(' '), rev = want.slice().reverse().join(' '), out = [want];
+ if (!want.length) return [];
+ ALIASES.forEach(function (group) {
+ var keys = group.map(function (n) { return nameTokens(n).join(' '); });
+ if (keys.indexOf(key) < 0 && keys.indexOf(rev) < 0) return;
+ keys.forEach(function (k) { if (k !== key && k !== rev) out.push(k.split(' ')); });
+ });
+ // prima le forme più lunghe: "BARCA F." va riconosciuto per intero
+ return out.sort(function (a, b) { return b.length - a.length; });
+ }
+ function locateAny(toks, variants) {
+ for (var v = 0; v < variants.length; v++) {
+ var w = variants[v], s = locate(toks, w);
+ if (s < 0 && w.length > 1) s = locate(toks, w.slice().reverse());
+ if (s >= 0) return { s: s, len: w.length };
+ }
+ return null;
+ }
+
  // Turni della persona "name" in un documento già letto
  function findShifts(doc, name) {
- var want = nameTokens(name), out = [];
- if (!want.length) return out;
- var wantRev = want.slice().reverse();
+ var variants = nameVariants(name), out = [];
+ if (!variants.length) return out;
  doc.rows.forEach(function (row, ri) {
  var segs = [];
  row.cells.forEach(function (cell, i) {
  if (!cell || !doc.cols[i]) return;
  var toks = cellTokens(cell);
- var s = locate(toks, want);
- if (s < 0 && want.length > 1) s = locate(toks, wantRev);
- if (s < 0) return;
- var before = toks[s - 1], after = toks[s + want.length];
+ var hit = locateAny(toks, variants);
+ if (!hit) return;
+ var s = hit.s;
+ var before = toks[s - 1], after = toks[s + hit.len];
  segs.push(mkSeg(doc, i,
  before ? hourMin(before.raw) : null,
  after ? hourMin(after.raw) : null, String(name).trim()));
@@ -406,9 +431,11 @@
 
  // "full" è il testo estratto dal PDF, "name" è il nome cercato dall'utente
  function nameMatches(full, name) {
- var want = nameTokens(name), toks = cellTokens(String(full));
- if (!want.length || toks.length !== want.length) return false;
+ var toks = cellTokens(String(full));
+ return nameVariants(name).some(function (want) {
+ if (toks.length !== want.length) return false;
  return locate(toks, want) === 0 || locate(toks, want.slice().reverse()) === 0;
+ });
  }
 
  var api = { parseDocument: parseDocument, findShifts: findShifts, dayOperators: dayOperators, nameMatches: nameMatches };
