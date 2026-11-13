@@ -422,7 +422,16 @@ function animatePay(to) {
  };
  payRaf = requestAnimationFrame(tick);
 }
+// Lo stipendio si vede solo sul nome di chi usa il telefono: il primo nome per cui l'app trova dei turni.
+// Vale anche se il nome è scritto in un altro modo (BARCA / BARCA F., GIANNELAVIG / GIANNELAVIGNA).
+// shortcut: si aggira cancellando i dati dell'app; un blocco vero richiede account su un server
+const LS_OWNER = 'turni.owner.v1';
+let owner = store.get(LS_OWNER, '');
 function updatePay(hours, y, m) {
+ if (!owner && name && hours > 0) { owner = name; store.set(LS_OWNER, owner); }
+ const own = !owner || P.nameMatches(owner, name);
+ $('#payBtn').hidden = $('#pay').hidden = !own;
+ if (!own) return;
  const total = Math.round(hours * RATE * 100) / 100;
  const ended = new Date(y, m, 1) <= startOfToday();
  $('#payTitle').textContent = 'Stipendio ' + MESI[m - 1] + ' ' + y;
